@@ -6,6 +6,11 @@ depthProbe::depthProbe(QWidget *parent) :
     ui(new Ui::depthProbe)
 {
     ui->setupUi(this);
+#ifdef DISCONNECTED
+    zeroed = true;
+#else
+    zeroed=false;
+#endif
     connect(ui->btnOpenFile,SIGNAL(clicked()),this,SLOT(openFile()));
     connect(ui->btnOpenPort,SIGNAL(clicked()),this,SLOT(openPort()));
     connect(ui->btnBegin,SIGNAL(clicked()),this,SLOT(Run()));
@@ -53,7 +58,8 @@ depthProbe::depthProbe(QWidget *parent) :
 
 depthProbe::~depthProbe()
 {
-    port.CloseComport(port_nr);
+    if(portOpen)
+        port.CloseComport(port_nr);
     delete ui;
 }
 
@@ -130,6 +136,7 @@ void depthProbe::Run()
         getZero();
     double realZero;
     double X,Y,Z;
+    int orig;
     QString line = "";
     QFile file(ui->filePath->text());
     file.open(QFile::ReadOnly);
@@ -140,30 +147,48 @@ void depthProbe::Run()
     }
     file.close();
     commands.removeAll("");
-    file.open(QFile::ReadWrite);
+    origSize = commands.size();
+    orig = commands.size();
+    file.open(QFile::WriteOnly);
     QTextStream write(&file);
     while(!commands.empty())
     {
         line = commands.first();
+        if((line.toUpper().contains("X"))&&(line.toUpper().contains("Y")))
+        {
+            QString temp = line.mid(line.toUpper().indexOf("X"));
+            X = temp.mid(1,temp.indexOf(" ")).toDouble();
+            temp = temp.mid(temp.toUpper().indexOf("Y"));
+            Y = temp.mid(1,temp.indexOf(" ")).toDouble();
+        }
         if(line.toUpper().contains("Z"))
         {
             if(line.lastIndexOf(" ")>line.toUpper().indexOf("Z"))
-                Z=line.mid(line.toUpper().indexOf("Z"),line.length()-line.lastIndexOf(" ")).toDouble();
+            {
+                QString temp = line.mid(line.toUpper().indexOf("Z")+1);
+                Z=temp.mid(0,temp.indexOf(" ")).toDouble();
+            }
             else
-                Z=line.mid(line.toUpper().indexOf("Z")).toDouble();
+                Z=line.mid(line.toUpper().indexOf("Z")+1).toDouble();
             if(Z<0)//edit depth
             {
-                QString temp = line.mid(line.toUpper().indexOf("X"));
-                X = line.mid(1,line.indexOf(" ")).toDouble();
-                temp = line.mid(line.toUpper().indexOf("Y"));
-                Y = line.mid(1,line.indexOf(" ")).toDouble();
                 realZero = getRealZero(X,Y);
                 line.replace(QString::number(Z),QString::number(Z+realZero));
             }
         }
         write.operator <<(line);
-        commands.removeOne(line);
+        write.operator <<("\r\n");
+        commands.removeFirst();
+        updateBar(double(commands.size()),double(orig));
     }
+    file.close();
+    char buf[] = "G00 X0 Y0 Z0\r";
+    port.SendBuf(port_nr,buf,13);
+#ifdef Q_WS_X11
+        usleep(50000);  // sleep for 100 milliSeconds
+#else
+        Sleep(50);
+#endif
 }
 
 void depthProbe::getZero()
@@ -193,19 +218,30 @@ void depthProbe::getZero()
             received=QString(buf);
     }
     port.Reset(port_nr);
+#ifdef Q_WS_X11
+        usleep(5000000);  // sleep for 100 milliSeconds
+#else
+        Sleep(5000);
+#endif
     n=port.PollComport(port_nr,buf,40);
     received=QString(buf);
     comando="G00 Z01\r";
     for(i=0;i<comando.length();i++)
         line[i]=comando.at(i).toAscii();
     port.SendBuf(port_nr,line,i);
+#ifdef Q_WS_X11
+        usleep(100000);  // sleep for 100 milliSeconds
+#else
+        Sleep(100);
+#endif
 }
 
 double depthProbe::getRealZero(double X, double Y)
 {
-    double Zpos=1;
+    port.flush(port_nr);
+    double Zpos=.5;
     int n,i;
-    QString comando,num;
+    QString comando;
     QString received = "";
     char buf[40];
     char line[40];
@@ -215,6 +251,7 @@ double depthProbe::getRealZero(double X, double Y)
     for(i=0;i<comando.length();i++)
         line[i]=comando.at(i).toAscii();
     port.SendBuf(port_nr,line,i);
+    port.flush(port_nr);
 #ifdef Q_WS_X11
     usleep(50000);  // sleep for 100 milliSeconds
 #else
@@ -222,7 +259,7 @@ double depthProbe::getRealZero(double X, double Y)
 #endif
     while(!received.contains("depth"))
     {
-        Zpos-=0.01;
+        Zpos-=0.02;
         //comando="G00 Z"+Zpos+"\r";
         comando = "G00 Z";
         comando.append(QString::number(Zpos)).append("\r");
@@ -237,20 +274,23 @@ double depthProbe::getRealZero(double X, double Y)
 #endif
         n=port.PollComport(port_nr,buf,40);
         if(n!=0)
-            received=received+QString(buf);
+            received=QString(buf);
     }
     comando="G00 Z01\r";
     for(i=0;i<comando.length();i++)
         line[i]=comando.at(i).toAscii();
     port.SendBuf(port_nr,line,i);
 #ifdef Q_WS_X11
-        usleep(50000);  // sleep for 100 milliSeconds
+        usleep(2000000);  // sleep for 100 milliSeconds
 #else
-        Sleep(50);
+        Sleep(2000);
 #endif
         return(Zpos);
 }
 
-void depthProbe::writeFile(QString line)
+void depthProbe::updateBar(double tam, double orig)
 {
+    double b = tam/orig;
+    int a = (1-(tam/orig))*100;
+    ui->progressBar->setValue(a);
 }

@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'depthprobe.ui'
 **
-** Created: Tue 28. Aug 16:12:27 2012
+** Created: Wed 29. Aug 20:02:54 2012
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -93,7 +93,6 @@ public:
         progressBar = new QProgressBar(centralWidget);
         progressBar->setObjectName(QString::fromUtf8("progressBar"));
         progressBar->setGeometry(QRect(30, 210, 118, 23));
-        progressBar->setValue(53);
         btnZero = new QPushButton(centralWidget);
         btnZero->setObjectName(QString::fromUtf8("btnZero"));
         btnZero->setEnabled(false);

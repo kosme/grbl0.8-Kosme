@@ -33,6 +33,7 @@ private:
     QLinkedList<QString> commands;
     QLinkedList<QString> edited;
     int port_nr;
+    int origSize;
     double depth;
     boolean portOpen;
     boolean zeroed;
@@ -40,7 +41,7 @@ private:
     QString styleSheet;
     void getZero();
     double getRealZero(double X, double Y);
-    void writeFile(QString line);
+    void updateBar(double tam, double orig);
 };
 
 #endif // DEPTHPROBE_H
