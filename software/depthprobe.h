@@ -26,6 +26,9 @@ private slots:
     void openPort();
     void Run();
     void Zero();
+#ifdef DEBUG
+    void button();
+#endif
     
 private:
     Ui::depthProbe *ui;
@@ -37,11 +40,17 @@ private:
     double depth;
     boolean portOpen;
     boolean zeroed;
+    char buf[4096];
+    char line[40];
     RS232 port;
     QString styleSheet;
     void getZero();
-    double getRealZero(double X, double Y);
+    double getRealZero(double X, double Y, bool reset);
     void updateBar(double tam, double orig);
+    double depthProbeZero();
+    void sendSerial(QString message);
+    QString readSerial(boolean flush);
+    void pause(long milis);
 };
 
 #endif // DEPTHPROBE_H

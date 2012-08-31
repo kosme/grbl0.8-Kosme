@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'depthprobe.ui'
 **
-** Created: Wed 29. Aug 20:02:54 2012
+** Created: Thu 30. Aug 21:52:40 2012
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -45,6 +45,7 @@ public:
     QRadioButton *rdbInch;
     QProgressBar *progressBar;
     QPushButton *btnZero;
+    QPushButton *pushButton;
     QMenuBar *menuBar;
     QToolBar *mainToolBar;
     QStatusBar *statusBar;
@@ -97,6 +98,10 @@ public:
         btnZero->setObjectName(QString::fromUtf8("btnZero"));
         btnZero->setEnabled(false);
         btnZero->setGeometry(QRect(210, 140, 81, 21));
+        pushButton = new QPushButton(centralWidget);
+        pushButton->setObjectName(QString::fromUtf8("pushButton"));
+        pushButton->setGeometry(QRect(220, 200, 75, 23));
+        pushButton->setFlat(false);
         depthProbe->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(depthProbe);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
@@ -126,6 +131,7 @@ public:
         rdbMm->setText(QApplication::translate("depthProbe", "Millimeters", 0, QApplication::UnicodeUTF8));
         rdbInch->setText(QApplication::translate("depthProbe", "Inches", 0, QApplication::UnicodeUTF8));
         btnZero->setText(QApplication::translate("depthProbe", "Zero machine", 0, QApplication::UnicodeUTF8));
+        pushButton->setText(QApplication::translate("depthProbe", "PushButton", 0, QApplication::UnicodeUTF8));
     } // retranslateUi
 
 };

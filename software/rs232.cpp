@@ -96,12 +96,6 @@ void RS232::Reset(int comport_number) //still to test
     //CloseComport(comport_number);
 }
 
-void RS232::HardReset(int comport_number)
-{
-    CloseComport(comport_number);
-    OpenComport(comport_number);
-}
-
 #else
 
 HANDLE Cport[16];
@@ -170,9 +164,9 @@ int RS232::OpenComport(int comport_number)
 
   COMMTIMEOUTS Cptimeouts={0};
 
-  Cptimeouts.ReadIntervalTimeout         = 250;
+  Cptimeouts.ReadIntervalTimeout         = 200;
   Cptimeouts.ReadTotalTimeoutMultiplier  = 0;
-  Cptimeouts.ReadTotalTimeoutConstant    = 250;
+  Cptimeouts.ReadTotalTimeoutConstant    = 200;
   Cptimeouts.WriteTotalTimeoutMultiplier = 0;
   Cptimeouts.WriteTotalTimeoutConstant   = 200;
 
@@ -222,23 +216,11 @@ void RS232::CloseComport(int comport_number)
 
 void RS232::Reset(int comport_number) //Tested 24/02/12
 {
-    //OpenComport(comport_number);
-    /*DWORD dtr=6;
-    EscapeCommFunction(Cport[comport_number],dtr);
-    dtr=5;
-    EscapeCommFunction(Cport[comport_number],dtr);*/
-    DWORD dtr=7;
-    for(dtr=0;dtr<10;dtr++)
-        EscapeCommFunction(Cport[comport_number],dtr);
-    //CloseComport(comport_number);
-    //CloseComport(comport_number);
-    //OpenComport(comport_number);
-}
-
-void RS232::HardReset(int comport_number) //Tested 28/08/12
-{
-    CloseComport(comport_number);
-    OpenComport(comport_number);
+    EscapeCommFunction(Cport[comport_number],DWORD(4));
+    EscapeCommFunction(Cport[comport_number],DWORD(6));
+    Sleep(250);
+    EscapeCommFunction(Cport[comport_number],DWORD(3));
+    EscapeCommFunction(Cport[comport_number],DWORD(5));
 }
 
 #endif

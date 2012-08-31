@@ -30,7 +30,6 @@ public:
     int SendBuf(int comport_number, char *buf, int size);
     void CloseComport(int comport_number);
     void Reset(int comport_number);
-    void HardReset(int comport_number);
     void flush(int comport_number);
 };
 

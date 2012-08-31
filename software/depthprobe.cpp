@@ -15,6 +15,12 @@ depthProbe::depthProbe(QWidget *parent) :
     connect(ui->btnOpenPort,SIGNAL(clicked()),this,SLOT(openPort()));
     connect(ui->btnBegin,SIGNAL(clicked()),this,SLOT(Run()));
     connect(ui->btnZero,SIGNAL(clicked()),this,SLOT(Zero()));
+#ifdef DEBUG
+    connect(ui->pushButton,SIGNAL(clicked()),this,SLOT(button()));
+    ui->pushButton->setVisible(true);
+#else
+    ui->pushButton->setVisible(false);
+#endif
     portOpen = false;
 #ifdef Q_WS_X11
     ui->cmbPort->addItem("USB0");
@@ -85,11 +91,7 @@ void depthProbe::openPort()
     {
 #ifndef DISCONNECTED
         port.Reset(port_nr);
-#ifdef Q_WS_X11
-            usleep(100000);  // sleep for 100 milliSeconds
-#else
-            Sleep(100);
-#endif
+        pause(100);
         if(!port.OpenComport(port_nr))
         {
             ui->grpFile->setEnabled(true);
@@ -126,14 +128,15 @@ void depthProbe::openPort()
 
 void depthProbe::Zero()
 {
-    getZero();
+    //getZero();
+    getRealZero(0,0,true);
     zeroed=true;
 }
 
 void depthProbe::Run()
 {
     if(!zeroed)
-        getZero();
+        Zero();
     double realZero;
     double X,Y,Z;
     int orig;
@@ -172,7 +175,7 @@ void depthProbe::Run()
                 Z=line.mid(line.toUpper().indexOf("Z")+1).toDouble();
             if(Z<0)//edit depth
             {
-                realZero = getRealZero(X,Y);
+                realZero = getRealZero(X,Y,false);
                 line.replace(QString::number(Z),QString::number(Z+realZero));
             }
         }
@@ -182,115 +185,130 @@ void depthProbe::Run()
         updateBar(double(commands.size()),double(orig));
     }
     file.close();
-    char buf[] = "G00 X0 Y0 Z0\r";
-    port.SendBuf(port_nr,buf,13);
-#ifdef Q_WS_X11
-        usleep(50000);  // sleep for 100 milliSeconds
-#else
-        Sleep(50);
-#endif
+    sendSerial("G00 X0 Y0 Z0\r");
+    pause(50);
 }
 
 void depthProbe::getZero()
 {
     port.flush(port_nr);
     double Zpos=0;
-    int n,i;
     QString comando,num;
     QString received = "";
-    char buf[40]="";
-    char line[40]="";
     while(!received.contains("depth"))
     {
         comando="G00 Z";
         Zpos-=0.02;
         comando.append(num.setNum(Zpos)).append("\r");
-        for(i=0;i<comando.length();i++)
-            line[i]=comando.at(i).toAscii();
-        port.SendBuf(port_nr,line,i);
-#ifdef Q_WS_X11
-        usleep(50000);  // sleep for 100 milliSeconds
-#else
-        Sleep(50);
-#endif
-        n=port.PollComport(port_nr,buf,40);
-        if(n!=0)
-            received=QString(buf);
+        sendSerial(comando);
+        pause(50);
+        received = readSerial(false);
     }
     port.Reset(port_nr);
-#ifdef Q_WS_X11
-        usleep(5000000);  // sleep for 100 milliSeconds
-#else
-        Sleep(5000);
-#endif
-    n=port.PollComport(port_nr,buf,40);
-    received=QString(buf);
-    comando="G00 Z01\r";
-    for(i=0;i<comando.length();i++)
-        line[i]=comando.at(i).toAscii();
-    port.SendBuf(port_nr,line,i);
-#ifdef Q_WS_X11
-        usleep(100000);  // sleep for 100 milliSeconds
-#else
-        Sleep(100);
-#endif
+    sendSerial("G00 Z01\r");
+    pause(100);
 }
 
-double depthProbe::getRealZero(double X, double Y)
+double depthProbe::getRealZero(double X, double Y,bool reset)
 {
     port.flush(port_nr);
     double Zpos=.5;
-    int n,i;
     QString comando;
     QString received = "";
-    char buf[40];
-    char line[40];
-    //Bcomando = "G00 X"+X+" Y"+Y+"\r";
     comando = "G00 X";
     comando.append(QString::number(X)).append(" Y").append(QString::number(Y)).append("\r");
-    for(i=0;i<comando.length();i++)
-        line[i]=comando.at(i).toAscii();
-    port.SendBuf(port_nr,line,i);
+    sendSerial(comando);
     port.flush(port_nr);
-#ifdef Q_WS_X11
-    usleep(50000);  // sleep for 100 milliSeconds
-#else
-    Sleep(50);
-#endif
+    pause(50);
     while(!received.contains("depth"))
     {
         Zpos-=0.02;
-        //comando="G00 Z"+Zpos+"\r";
         comando = "G00 Z";
         comando.append(QString::number(Zpos)).append("\r");
-        //comando.append(num.setNum(Zpos)).append("\r");
-        for(i=0;i<comando.length();i++)
-            line[i]=comando.at(i).toAscii();
-        port.SendBuf(port_nr,line,i);
-#ifdef Q_WS_X11
-        usleep(50000);  // sleep for 100 milliSeconds
-#else
-        Sleep(50);
-#endif
-        n=port.PollComport(port_nr,buf,40);
-        if(n!=0)
-            received=QString(buf);
+        sendSerial(comando);
+        pause(50);
+        received = readSerial(false);
     }
-    comando="G00 Z01\r";
-    for(i=0;i<comando.length();i++)
-        line[i]=comando.at(i).toAscii();
-    port.SendBuf(port_nr,line,i);
-#ifdef Q_WS_X11
-        usleep(2000000);  // sleep for 100 milliSeconds
-#else
-        Sleep(2000);
-#endif
-        return(Zpos);
+    if(reset)
+        port.Reset(port_nr);
+    sendSerial("G00 Z01\r");
+    pause(2000);
+    return(Zpos);
 }
 
 void depthProbe::updateBar(double tam, double orig)
 {
-    double b = tam/orig;
+    //double b = tam/orig;
     int a = (1-(tam/orig))*100;
     ui->progressBar->setValue(a);
 }
+
+double depthProbe::depthProbeZero()
+{
+    double half=2.56,level = 0;
+    int i;
+    QString received;
+    sendSerial(QString("G00 Z").append(QString::number(level)).append("\r"));
+    for(i=0;i<8;i++)
+    {
+        received=readSerial(true);
+        half=half/2;
+        if(received.contains("depth"))
+        {
+            level+=half;
+        }
+        else
+        {
+            level-=half;
+        }
+        sendSerial(QString("G00 Z").append(QString::number(level)).append("\r"));
+    }
+    return level;
+}
+
+void depthProbe::sendSerial(QString message)
+{
+    strncpy_s(line,message.toAscii().constData(),message.length());
+#ifndef DISCONNECTED
+    port.SendBuf(port_nr,line,message.length());
+#endif
+}
+
+QString depthProbe::readSerial(boolean flush)
+{
+#ifndef DISCONNECTED
+    int n;
+    if(flush)
+    {
+        port.flush(port_nr);
+        pause(50);
+    }
+    n=port.PollComport(port_nr,buf,4096);
+    pause(250);
+    if(n!=0)
+        return QString(buf).left(n);
+    else
+        return "";
+#else
+    return "";
+#endif
+}
+
+void depthProbe::pause(long milis)
+{
+#ifdef Q_WS_X11
+        usleep(milis*1000);
+#else
+        Sleep(milis);
+#endif
+}
+
+#ifdef DEBUG
+void depthProbe::button()
+{
+    readSerial(true);
+    sendSerial("$\r");
+    QString popochas = readSerial(false);
+    QMessageBox(QMessageBox::Critical,"Interaction needed",popochas,QMessageBox::Ok).exec();
+}
+#endif
